@@ -1,17 +1,18 @@
-import threading
-import logging
-from pydub import AudioSegment
-import os
+import gc
 import json
-from openai import OpenAI
-from jinja2 import Template
+import logging
+import math
+import os
 import pickle
+import shutil
 import threading
 import time
-import gc
-import math
-import shutil
+from typing import Any, Dict
+
 from dotenv import dotenv_values
+from jinja2 import Template
+from openai import OpenAI
+from pydub import AudioSegment
 
 env = dotenv_values(".env")
 for key in env:
@@ -22,7 +23,7 @@ for key in env:
 
 
 class PodcastProcessorTask:
-    def __init__(self, podcast_title, audio_path, podcast_description):
+    def __init__(self, podcast_title: str, audio_path: str, podcast_description: str):
         self.podcast_title = podcast_title
         self.audio_path = audio_path
         self.podcast_description = podcast_description
@@ -41,12 +42,12 @@ class PodcastProcessor:
     lock_lock = threading.Lock()
     locks = {}
 
-    def __init__(self, config, processing_dir="processing"):
+    def __init__(self, config, processing_dir: str = "processing"):
         super().__init__()
         self.logger = logging.getLogger("global_logger")
         self.processing_dir = processing_dir
         self.output_dir = "srv"
-        self.config = config
+        self.config: Dict[str, Any] = config
         self.pickle_transcripts = self.init_pickle_transcripts()
         self.client = OpenAI(
             base_url=(
@@ -396,6 +397,7 @@ class PodcastProcessor:
 
 if __name__ == "__main__":
     import logging
+
     import yaml
 
     logging.basicConfig(level=logging.INFO)
