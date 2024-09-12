@@ -12,7 +12,7 @@ from typing import Any, Dict
 from dotenv import dotenv_values
 from jinja2 import Template
 from openai import OpenAI
-from pydub import AudioSegment
+from pydub import AudioSegment  # type: ignore[import-untyped]
 
 env = dotenv_values(".env")
 for key in env:
@@ -40,7 +40,7 @@ class PodcastProcessorTask:
 
 class PodcastProcessor:
     lock_lock = threading.Lock()
-    locks = {}
+    locks: Dict[str, threading.Lock] = {}
 
     def __init__(self, config, processing_dir: str = "processing"):
         super().__init__()
@@ -206,7 +206,7 @@ class PodcastProcessor:
             chunk.export(f"{audio_path}_parts/{i}.mp3", format="mp3")
 
     def local_whisper(self, task):
-        import whisper
+        import whisper  # type: ignore[import-untyped]
 
         self.logger.info("Using local whisper")
         models = whisper.available_models()
