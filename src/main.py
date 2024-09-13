@@ -21,9 +21,7 @@ from zeroconf import ServiceInfo, Zeroconf
 
 from logger import setup_logger  # type: ignore[import-not-found]
 from podcast_processor.podcast_processor import (  # type: ignore[import-not-found]
-    PodcastProcessor,
-    PodcastProcessorTask,
-)
+    PodcastProcessor, PodcastProcessorTask)
 
 if not os.path.exists(".env"):
     raise FileNotFoundError("No .env file found.")
@@ -201,6 +199,10 @@ if __name__ == "__main__":
     serve(
         app,
         host="0.0.0.0",
-        threads=int(env["THREADS"] if env["THREADS"] is not None else 1),
+        threads=(
+            int(env["THREADS"])
+            if "THREADS" in env and env["THREADS"] is not None
+            else 1
+        ),
         port=int(env["SERVER_PORT"]) if env["SERVER_PORT"] is not None else 5001,
     )

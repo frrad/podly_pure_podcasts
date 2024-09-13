@@ -7,7 +7,8 @@ import pickle
 import shutil
 import threading
 import time
-from typing import Any, Dict, Tuple, List
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 from dotenv import dotenv_values
 from jinja2 import Template
@@ -16,12 +17,52 @@ from pydub import AudioSegment  # type: ignore[import-untyped]
 
 Segment = Any
 
-env = dotenv_values(".env")
-for key in env:
-    if key == "OPENAI_API_KEY":
-        print(key, "********")
-    else:
-        print(key, env[key])
+
+@dataclass
+class EnvSettings:
+    OpenAIMaxTokens: int
+    OpenAIAPIKey: str
+    OpenAIBaseURL: str
+    OpenAIModel: str
+    RemoteWhisper: bool
+    WhisperModel: str
+    OpenAITimeout: int
+
+
+def get_or_die(source: Dict[str, Optional[str]], key: str) -> str:
+    assert key in source
+    value_in_dict = source[key]
+    assert value_in_dict is not None
+    return value_in_dict
+
+
+def get_or_default(env: Dict[str, Optional[str]], key: str, default: str):
+    value = env.get(key, default)
+    return value or default
+
+
+def populate_env_settings() -> EnvSettings:
+    env = dotenv_values(".env")
+    for key in env:
+        if key == "OPENAI_API_KEY":
+            print(key, "********")
+        else:
+            print(key, env[key])
+
+    return EnvSettings(
+        OpenAIMaxTokens=int(get_or_default(env, "OPENAI_MAX_TOKENS", "4096")),
+        OpenAIAPIKey=get_or_die(env, "OPENAI_API_KEY"),
+        OpenAIBaseURL=get_or_default(
+            env, "OPENAI_BASE_URL", "https://api.openai.com/v1"
+        ),
+        OpenAIModel=get_or_default(env, "OPENAI_MODEL", "gpt-4o"),
+        RemoteWhisper=True if env.get("REMOTE_WHISPER", None) is not None else False,
+        WhisperModel=get_or_default(env, "WHISPER_MODEL", "base"),
+        OpenAITimeout=int(get_or_default(env, "OPENAI_TIMEOUT", "300")),
+    )
+
+
+env_settings = populate_env_settings()
 
 
 class PodcastProcessorTask:
@@ -56,12 +97,8 @@ class PodcastProcessor:
         self.config: Dict[str, Any] = config
         self.pickle_transcripts: Dict[str, Any] = self.init_pickle_transcripts()
         self.client = OpenAI(
-            base_url=(
-                env["OPENAI_BASE_URL"]
-                if "OPENAI_BASE_URL" in env
-                else "https://api.openai.com/v1"
-            ),
-            api_key=env["OPENAI_API_KEY"],
+            base_url=env_settings.OpenAIBaseURL,
+            api_key=env_settings.OpenAIAPIKey,
         )
 
     def init_pickle_transcripts(self) -> Any:
@@ -100,7 +137,7 @@ class PodcastProcessor:
             )
             self.classify(
                 transcript_segments,
-                env["OPENAI_MODEL"] if env["OPENAI_MODEL"] is not None else "gpt-4o",
+                env_settings.OpenAIModel,
                 self.config["processing"]["system_prompt"],
                 user_prompt_template,
                 self.config["processing"]["num_segments_to_input_to_prompt"],
@@ -158,7 +195,7 @@ class PodcastProcessor:
 
         segments = (
             self.remote_whisper(task)
-            if "REMOTE_WHISPER" in env
+            if env_settings.RemoteWhisper
             else self.local_whisper(task)
         )
 
@@ -224,9 +261,7 @@ class PodcastProcessor:
         models = whisper.available_models()
         self.logger.info(f"Available models: {models}")
 
-        model = whisper.load_model(
-            name=env["WHISPER_MODEL"] if "WHISPER_MODEL" in env else "base",
-        )
+        model = whisper.load_model(name=env_settings.WhisperModel)
 
         self.logger.info("Beginning transcription")
         start = time.time()
@@ -295,16 +330,8 @@ class PodcastProcessor:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=(
-                int(env["OPENAI_MAX_TOKENS"])
-                if env["OPENAI_MAX_TOKENS"] is not None
-                else 4096
-            ),
-            timeout=(
-                float(env["OPENAI_TIMEOUT"])
-                if env["OPENAI_TIMEOUT"] is not None
-                else 300
-            ),
+            max_tokens=env_settings.OpenAIMaxTokens,
+            timeout=env_settings.OpenAITimeout,
         )
 
         content = response.choices[0].message.content
