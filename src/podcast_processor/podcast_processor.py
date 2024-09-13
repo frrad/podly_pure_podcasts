@@ -340,7 +340,7 @@ class PodcastProcessor:
 
     def get_ad_segments(
         self, segments: List[Segment], classification_path: str
-    ) -> List[Tuple[int, int]]:
+    ) -> List[Tuple[float, float]]:
         segments_by_start = {segment["start"]: segment for segment in segments}
         ad_segments = []
         for dir in sorted(
@@ -383,18 +383,18 @@ class PodcastProcessor:
         return ad_segments
 
     def get_ad_fade_out(
-        self, audio: AudioSegment, start: int, fade_ms: int
+        self, audio: AudioSegment, ad_start_ms: int, fade_ms: int
     ) -> AudioSegment:
-        fade_out = audio[start : start + fade_ms]
+        fade_out = audio[ad_start_ms : ad_start_ms + fade_ms]
         assert isinstance(fade_out, AudioSegment)
 
         fade_out = fade_out.fade_out(fade_ms)
         return fade_out
 
     def get_ad_fade_in(
-        self, audio: AudioSegment, ad_end: int, fade_ms: int
+        self, audio: AudioSegment, ad_end_ms: int, fade_ms: int
     ) -> AudioSegment:
-        fade_in = audio[ad_end - fade_ms : ad_end]
+        fade_in = audio[ad_end_ms - fade_ms : ad_end_ms]
         assert isinstance(fade_in, AudioSegment)
 
         fade_in = fade_in.fade_in(fade_ms)
@@ -403,7 +403,7 @@ class PodcastProcessor:
     def create_new_audio_without_ads(
         self,
         audio: AudioSegment,
-        ad_segments: List[Tuple[int, int]],
+        ad_segments: List[Tuple[float, float]],
         min_ad_segment_length_seconds: int,
         min_ad_segement_separation_seconds: int,
         fade_ms: int = 5000,
@@ -440,7 +440,9 @@ class PodcastProcessor:
                 ad_segments[-1] = (ad_segments[-1][0], audio.duration_seconds)
         self.logger.info(f"Joined ad segments into: {ad_segments}")
 
-        ad_segments_ms = [(start * 1000, end * 1000) for start, end in ad_segments]
+        ad_segments_ms = [
+            (int(start * 1000), int(end * 1000)) for start, end in ad_segments
+        ]
         new_audio = AudioSegment.empty()
         last_end = 0
         for start, end in ad_segments_ms:
