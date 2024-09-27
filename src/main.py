@@ -129,7 +129,7 @@ def get_download_link(entry: Any, podcast_title: str) -> Optional[str]:
         return None
 
     return (
-        (env["SERVER"] if env["SERVER"] is not None else "")
+        (env["SERVER"] if "SERVER" in env and env["SERVER"] is not None else "")
         + url_for(
             "download",
             episode_name=f"{remove_odd_characters(entry.title)}.mp3",
@@ -204,5 +204,7 @@ if __name__ == "__main__":
             if "THREADS" in env and env["THREADS"] is not None
             else 1
         ),
-        port=int(env["SERVER_PORT"]) if env["SERVER_PORT"] is not None else 5001,
+        port=int(env["SERVER_PORT"])
+        if "SERVER_PORT" in env and env["SERVER_PORT"] is not None
+        else 5001,
     )
