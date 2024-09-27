@@ -10,7 +10,6 @@ class EnvSettings:
     OpenAIAPIKey: str
     OpenAIBaseURL: str
     OpenAIModel: str
-    WhisperModel: str
     OpenAITimeout: int
 
 
@@ -41,6 +40,5 @@ def populate_env_settings() -> EnvSettings:
             env, "OPENAI_BASE_URL", "https://api.openai.com/v1"
         ),
         OpenAIModel=get_or_default(env, "OPENAI_MODEL", "gpt-4o"),
-        WhisperModel=get_or_default(env, "WHISPER_MODEL", "base"),
         OpenAITimeout=int(get_or_default(env, "OPENAI_TIMEOUT", "300")),
     )
