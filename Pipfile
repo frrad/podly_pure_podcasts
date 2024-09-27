@@ -22,10 +22,14 @@ exceptiongroup = "*"
 zeroconf = "*"
 waitress = "*"
 validators = "*"
+beartype = "*"
 
 [dev-packages]
-mypy = "*"
 black = "*"
+mypy = "*"
+types-pyyaml = "*"
+types-requests = "*"
+types-waitress = "*"
 
 [requires]
 python_version = "3.11"
