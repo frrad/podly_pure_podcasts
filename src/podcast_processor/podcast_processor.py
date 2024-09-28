@@ -6,9 +6,9 @@ import os
 import pickle
 import shutil
 import threading
-import time
 from typing import Any, Dict, List, Tuple
 
+import yaml
 from jinja2 import Template
 from openai import OpenAI
 from pydub import AudioSegment  # type: ignore[import-untyped]
@@ -92,23 +92,29 @@ class PodcastProcessor:
                 self.config["processing"]["user_prompt_template_path"]
             )
             self.classify(
-                transcript_segments,
-                env_settings.OpenAIModel,
-                self.config["processing"]["system_prompt"],
-                user_prompt_template,
-                self.config["processing"]["num_segments_to_input_to_prompt"],
-                task,
-                classification_dir,
+                transcript_segments=transcript_segments,
+                model=env_settings.OpenAIModel,
+                system_prompt=self.config["processing"]["system_prompt"],
+                user_prompt_template=user_prompt_template,
+                num_segments_to_input_to_prompt=self.config["processing"][
+                    "num_segments_to_input_to_prompt"
+                ],
+                task=task,
+                classification_path=classification_dir,
             )
             ad_segments = self.get_ad_segments(transcript_segments, classification_dir)
             audio = AudioSegment.from_file(task.audio_path)
             assert isinstance(audio, AudioSegment)
             self.create_new_audio_without_ads(
-                audio,
-                ad_segments,
-                self.config["output"]["min_ad_segment_length_seconds"],
-                self.config["output"]["min_ad_segement_separation_seconds"],
-                self.config["output"]["fade_ms"],
+                audio=audio,
+                ad_segments=ad_segments,
+                min_ad_segment_length_seconds=self.config["output"][
+                    "min_ad_segment_length_seconds"
+                ],
+                min_ad_segement_separation_seconds=self.config["output"][
+                    "min_ad_segement_separation_seconds"
+                ],
+                fade_ms=self.config["output"]["fade_ms"],
             ).export(
                 f'{final_audio_path}/{task.audio_path.split("/")[-1]}', format="mp3"
             )
@@ -146,8 +152,8 @@ class PodcastProcessor:
                 "segments" in transcript
             ):  # used to store whole transcript, saves people from having to delete pickle on upgrade
                 return transcript["segments"]
-            else:
-                return transcript
+
+            return transcript
 
         segments = self.remote_whisper(task)
 
@@ -212,6 +218,7 @@ class PodcastProcessor:
 
     def classify(
         self,
+        *,
         transcript_segments: List[Segment],
         model: str,
         system_prompt: str,
@@ -240,9 +247,9 @@ class PodcastProcessor:
             ]
 
             if start == 0:
-                excerpts.insert(0, f"[TRANSCRIPT START]")
+                excerpts.insert(0, "[TRANSCRIPT START]")
             elif end == len(transcript_segments):
-                excerpts.append(f"[TRANSCRIPT END]")
+                excerpts.append("[TRANSCRIPT END]")
 
             self.logger.info(f"Calling {model}")
             user_prompt = user_prompt_template.render(
@@ -278,14 +285,16 @@ class PodcastProcessor:
     ) -> List[Tuple[float, float]]:
         segments_by_start = {segment["start"]: segment for segment in segments}
         ad_segments = []
-        for dir in sorted(
+        for classification_dir in sorted(
             os.listdir(classification_path),
             key=lambda filename: (len(filename), filename),
         ):
-            with open(f"{classification_path}/{dir}/identification.txt", "r") as f:
-                prompt_start_timestamp = float(dir.split("_")[0])
-                prompt_end_timestamp = float(dir.split("_")[1])
-                identification = f.read()
+            with open(
+                f"{classification_path}/{classification_dir}/identification.txt", "r"
+            ) as id_file:
+                prompt_start_timestamp = float(classification_dir.split("_")[0])
+                prompt_end_timestamp = float(classification_dir.split("_")[1])
+                identification = id_file.read()
                 identification = identification.replace("```json", "")
                 identification = identification.replace("```", "")
                 identification = identification.replace("'", '"')
@@ -302,7 +311,8 @@ class PodcastProcessor:
                     ad_segment_starts = [
                         start
                         for start in ad_segment_starts
-                        if start >= prompt_start_timestamp
+                        if start  # pylint: disable=chained-comparison
+                        >= prompt_start_timestamp
                         and start <= prompt_end_timestamp
                         and start in segments_by_start
                     ]
@@ -311,7 +321,7 @@ class PodcastProcessor:
                     for ad_segment_start in ad_segment_starts:
                         ad_segment_end = segments_by_start[ad_segment_start]["end"]
                         ad_segments.append((ad_segment_start, ad_segment_end))
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     self.logger.error(
                         f"Error parsing ad segment: {e} for {identification}"
                     )
@@ -337,6 +347,7 @@ class PodcastProcessor:
 
     def create_new_audio_without_ads(
         self,
+        *,
         audio: AudioSegment,
         ad_segments: List[Tuple[float, float]],
         min_ad_segment_length_seconds: int,
@@ -365,8 +376,9 @@ class PodcastProcessor:
             for segment in ad_segments
             if segment[1] - segment[0] >= min_ad_segment_length_seconds
         ]
-        # whisper sometimes drops the last bit of the transcript & this can lead to end-roll not being
-        # entirely removed, so bump the ad segment to the end of the audio if it's close enough
+        # whisper sometimes drops the last bit of the transcript & this can lead
+        # to end-roll not being entirely removed, so bump the ad segment to the
+        # end of the audio if it's close enough
         if len(ad_segments) > 0:
             if (
                 audio.duration_seconds - ad_segments[-1][1]
@@ -391,11 +403,7 @@ class PodcastProcessor:
         return new_audio
 
 
-if __name__ == "__main__":
-    import logging
-
-    import yaml
-
+def main():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("global_logger")
 
@@ -410,3 +418,7 @@ if __name__ == "__main__":
     processor = PodcastProcessor(config)
     processor.process(task)
     logger.info("PodcastProcessor done")
+
+
+if __name__ == "__main__":
+    main()

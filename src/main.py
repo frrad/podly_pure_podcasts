@@ -21,7 +21,9 @@ from zeroconf import ServiceInfo, Zeroconf
 
 from logger import setup_logger  # type: ignore[import-not-found]
 from podcast_processor.podcast_processor import (  # type: ignore[import-not-found]
-    PodcastProcessor, PodcastProcessorTask)
+    PodcastProcessor,
+    PodcastProcessorTask,
+)
 
 if not os.path.exists(".env"):
     raise FileNotFoundError("No .env file found.")
@@ -113,14 +115,14 @@ def rss(podcast_rss):
                 pubDate=datetime.datetime(*entry.published_parsed[:6]),
             )
         )
-    rss = PyRSS2Gen.RSS2(
+    rss_feed = PyRSS2Gen.RSS2(
         title="[podly] " + feed.feed.title,
         link=request.url_root,
         description=feed.feed.description,
         lastBuildDate=datetime.datetime.now(),
         items=transformed_items,
     )
-    return rss.to_xml("utf-8"), 200, {"Content-Type": "application/xml"}
+    return rss_feed.to_xml("utf-8"), 200, {"Content-Type": "application/xml"}
 
 
 def get_download_link(entry: Any, podcast_title: str) -> Optional[str]:
@@ -153,7 +155,7 @@ def download_episode(podcast_title, episode_name, episode_url):
             abort(404)
 
         logger.info(f"Downloading {audio_link} into {download_path}...")
-        response = requests.get(audio_link)
+        response = requests.get(audio_link)  # pylint: disable=missing-timeout
         if response.status_code == 200:
             with open(download_path, "wb") as file:
                 file.write(response.content)
