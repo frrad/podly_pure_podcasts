@@ -1,4 +1,5 @@
-[tool.pylint.'MESSAGES CONTROL']
+[tool.pylint]
+init-hook = 'import sys; sys.path.append("./src")'
 
 disable = [
     "logging-fstring-interpolation",
@@ -9,9 +10,6 @@ disable = [
     "too-many-locals",
     "unspecified-encoding",
 ]
-
-[tool.pylint]
-init-hook = 'import sys; sys.path.append("./src")'
 
 [tool.mypy]
 warn_unused_ignores = true
