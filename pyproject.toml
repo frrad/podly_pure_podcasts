@@ -9,3 +9,10 @@ disable = [
     "missing-module-docstring",
     "unspecified-encoding",
 ]
+
+
+[tool.pylint]
+init-hook = 'import sys; sys.path.append("./src")'
+
+[tool.mypy]
+warn_unused_ignores = true
