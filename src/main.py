@@ -17,8 +17,7 @@ from flask import Flask, abort, request, send_file, url_for
 from waitress import serve
 
 from logger import setup_logger
-from podcast_processor.podcast_processor import (PodcastProcessor,
-                                                 PodcastProcessorTask)
+from podcast_processor.podcast_processor import PodcastProcessor, PodcastProcessorTask
 
 if not os.path.exists(".env"):
     raise FileNotFoundError("No .env file found.")
@@ -201,7 +200,9 @@ if __name__ == "__main__":
             if "THREADS" in env and env["THREADS"] is not None
             else 1
         ),
-        port=int(env["SERVER_PORT"])
-        if "SERVER_PORT" in env and env["SERVER_PORT"] is not None
-        else 5001,
+        port=(
+            int(env["SERVER_PORT"])
+            if "SERVER_PORT" in env and env["SERVER_PORT"] is not None
+            else 5001
+        ),
     )
