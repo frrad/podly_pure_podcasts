@@ -53,8 +53,8 @@ class PodcastProcessor:
         self.config: Dict[str, Any] = config
         self.pickle_transcripts: Dict[str, Any] = self.init_pickle_transcripts()
         self.client = OpenAI(
-            base_url=env_settings.OpenAIBaseURL,
-            api_key=env_settings.OpenAIAPIKey,
+            base_url=env_settings.openai_base_url,
+            api_key=env_settings.openai_api_key,
         )
 
     def init_pickle_transcripts(self) -> Any:
@@ -93,7 +93,7 @@ class PodcastProcessor:
             )
             self.classify(
                 transcript_segments=transcript_segments,
-                model=env_settings.OpenAIModel,
+                model=env_settings.openai_model,
                 system_prompt=self.config["processing"]["system_prompt"],
                 user_prompt_template=user_prompt_template,
                 num_segments_to_input_to_prompt=self.config["processing"][
@@ -271,8 +271,8 @@ class PodcastProcessor:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=env_settings.OpenAIMaxTokens,
-            timeout=env_settings.OpenAITimeout,
+            max_tokens=env_settings.openai_max_tokens,
+            timeout=env_settings.openai_timeout,
         )
 
         content = response.choices[0].message.content
