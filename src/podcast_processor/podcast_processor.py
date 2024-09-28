@@ -122,7 +122,7 @@ class PodcastProcessor:
             return task.get_output_path()
 
     def make_dirs(self, task: PodcastProcessorTask) -> Tuple[str, str, str]:
-        audio_processing_dir = f'{self.processing_dir}/{task.podcast_title}/{task.audio_path.split("/")[-1]}'
+        audio_processing_dir = f'{self.processing_dir}/{task.podcast_title}/{task.audio_path.split("/")[-1]}'  # pylint: disable=line-too-long
         transcript_dir = f"{audio_processing_dir}/transcription"
         classification_dir = f"{audio_processing_dir}/classification"
         final_audio_path = f"{self.output_dir}/{task.podcast_title}"
@@ -148,9 +148,8 @@ class PodcastProcessor:
         if task.pickle_id() in self.pickle_transcripts:
             self.logger.info("Transcript already transcribed")
             transcript = self.pickle_transcripts[task.pickle_id()]
-            if (
-                "segments" in transcript
-            ):  # used to store whole transcript, saves people from having to delete pickle on upgrade
+            # used to store whole transcript, saves people from having to delete pickle on upgrade
+            if "segments" in transcript:
                 return transcript["segments"]
 
             return transcript
@@ -233,7 +232,7 @@ class PodcastProcessor:
             start = i
             end = min(i + num_segments_to_input_to_prompt, len(transcript_segments))
 
-            target_dir = f"{classification_path}/{transcript_segments[start]['start']}_{transcript_segments[end-1]['end']}"
+            target_dir = f"{classification_path}/{transcript_segments[start]['start']}_{transcript_segments[end-1]['end']}"  # pylint: disable=line-too-long
             if not os.path.exists(target_dir):
                 os.makedirs(target_dir)
             else:
@@ -307,7 +306,8 @@ class PodcastProcessor:
                         if confidence < self.config["output"]["min_confidence"]:
                             continue
                     ad_segment_starts = identification_json["ad_segments"]
-                    # filter out ad segments outside of the start/end, and that do not exist in segments_by_start
+                    # filter out ad segments outside of the start/end, and that
+                    # do not exist in segments_by_start
                     ad_segment_starts = [
                         start
                         for start in ad_segment_starts
