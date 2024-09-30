@@ -5,6 +5,7 @@ import os
 import pickle
 import threading
 from typing import Any, Dict, List, Tuple
+from openai.types.audio.transcription_segment import TranscriptionSegment
 
 import yaml
 from jinja2 import Template
@@ -12,7 +13,7 @@ from openai import OpenAI
 from pydub import AudioSegment  # type: ignore[import-untyped]
 
 from .env_settings import populate_env_settings
-from .transcribe import RemoteWhisperTranscriber, Segment, Transcriber
+from .transcribe import RemoteWhisperTranscriber, Transcriber
 
 env_settings = populate_env_settings()
 
@@ -66,7 +67,7 @@ class PodcastProcessor:
                 return pickle.load(f)
 
     def update_pickle_transcripts(
-        self, task: PodcastProcessorTask, result: List[Segment]
+        self, task: PodcastProcessorTask, result: List[TranscriptionSegment]
     ) -> None:
         with open("transcripts.pickle", "wb") as f:
             self.pickle_transcripts[task.pickle_id()] = result
@@ -138,29 +139,27 @@ class PodcastProcessor:
         self,
         task: PodcastProcessorTask,
         transcript_file_path: str,
-    ) -> List[Segment]:
+    ) -> List[TranscriptionSegment]:
         self.logger.info(
             f"Transcribing audio from {task.audio_path} into {transcript_file_path}"
         )
         # check pickle
         if task.pickle_id() in self.pickle_transcripts:
             self.logger.info("Transcript already transcribed")
-            transcript = self.pickle_transcripts[task.pickle_id()]
-            # used to store whole transcript, saves people from having to delete pickle on upgrade
-            if "segments" in transcript:
-                return transcript["segments"]
-
+            transcript: List[TranscriptionSegment] = self.pickle_transcripts[
+                task.pickle_id()
+            ]
             return transcript
 
         segments = self.transcriber.transcribe(task.audio_path)
 
         for segment in segments:
-            segment["start"] = round(segment["start"], 1)
-            segment["end"] = round(segment["end"], 1)
+            segment.start = round(segment.start, 1)
+            segment.end = round(segment.end, 1)
 
         with open(transcript_file_path + "/transcript.txt", "w") as f:
             for segment in segments:
-                f.write(f"{segment['start']}{segment['text']}\n")
+                f.write(f"{segment.start}{segment.text}\n")
 
         self.update_pickle_transcripts(task, segments)
         return segments
@@ -172,7 +171,7 @@ class PodcastProcessor:
     def classify(
         self,
         *,
-        transcript_segments: List[Segment],
+        transcript_segments: List[TranscriptionSegment],
         model: str,
         system_prompt: str,
         user_prompt_template: Template,
@@ -186,7 +185,7 @@ class PodcastProcessor:
             start = i
             end = min(i + num_segments_to_input_to_prompt, len(transcript_segments))
 
-            target_dir = f"{classification_path}/{transcript_segments[start]['start']}_{transcript_segments[end-1]['end']}"  # pylint: disable=line-too-long
+            target_dir = f"{classification_path}/{transcript_segments[start].start}_{transcript_segments[end-1].end}"  # pylint: disable=line-too-long
             if not os.path.exists(target_dir):
                 os.makedirs(target_dir)
             else:
@@ -195,7 +194,7 @@ class PodcastProcessor:
                 )
                 continue
             excerpts = [
-                f"[{segment['start']}] {segment['text']}"
+                f"[{segment.start}] {segment.text}"
                 for segment in transcript_segments[start:end]
             ]
 
@@ -234,9 +233,9 @@ class PodcastProcessor:
         return content
 
     def get_ad_segments(
-        self, segments: List[Segment], classification_path: str
+        self, segments: List[TranscriptionSegment], classification_path: str
     ) -> List[Tuple[float, float]]:
-        segments_by_start = {segment["start"]: segment for segment in segments}
+        segments_by_start = {segment.start: segment for segment in segments}
         ad_segments = []
         for classification_dir in sorted(
             os.listdir(classification_path),
@@ -273,7 +272,7 @@ class PodcastProcessor:
                     if len(ad_segment_starts) == 0:
                         continue
                     for ad_segment_start in ad_segment_starts:
-                        ad_segment_end = segments_by_start[ad_segment_start]["end"]
+                        ad_segment_end = segments_by_start[ad_segment_start].end
                         ad_segments.append((ad_segment_start, ad_segment_end))
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     self.logger.error(

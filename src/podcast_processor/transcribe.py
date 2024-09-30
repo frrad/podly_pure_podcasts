@@ -3,18 +3,17 @@ import math
 import os
 import shutil
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import List
 
 from openai import OpenAI
+from openai.types.audio.transcription_segment import TranscriptionSegment
 from pydub import AudioSegment  # type: ignore[import-untyped]
-
-Segment = Any
 
 
 # Abstract Transcriber Class
 class Transcriber(ABC):
     @abstractmethod
-    def transcribe(self, path: str) -> List[Segment]:
+    def transcribe(self, path: str) -> List[TranscriptionSegment]:
         pass
 
 
@@ -23,7 +22,7 @@ class RemoteWhisperTranscriber(Transcriber):
         self.logger = logger
         self.openai_client = openai_client
 
-    def transcribe(self, audio_path: str) -> List[Segment]:
+    def transcribe(self, audio_path: str) -> List[TranscriptionSegment]:
         self.logger.info("Using remote whisper")
         self.split_file(audio_path)
         all_segments = []
@@ -53,16 +52,18 @@ class RemoteWhisperTranscriber(Transcriber):
             chunk = audio[start_time:end_time]
             chunk.export(f"{audio_path}_parts/{i}.mp3", format="mp3")
 
-    def get_segments_for_chunk(self, chunk_path: str) -> List[Segment]:
+            break  # TODO REMOVE ME
+
+    def get_segments_for_chunk(self, chunk_path: str) -> List[TranscriptionSegment]:
         with open(chunk_path, "rb") as f:
-            model_extra = self.openai_client.audio.transcriptions.create(
+            transcription = self.openai_client.audio.transcriptions.create(
                 model="whisper-1",
                 file=f,
                 timestamp_granularities=["segment"],
                 language="en",
                 response_format="verbose_json",
-            ).model_extra
+            )
 
-            assert model_extra is not None
-
-            return model_extra["segments"]
+            segments = transcription.segments
+            assert segments is not None
+            return segments
