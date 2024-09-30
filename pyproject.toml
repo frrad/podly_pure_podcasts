@@ -15,6 +15,9 @@ disable = [
 warn_unused_ignores = true
 strict = true
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [tool.black]
 line-length = 88
 
