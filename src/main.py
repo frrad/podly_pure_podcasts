@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import Any, Optional, Tuple, cast
 
 import feedparser  # type: ignore[import-untyped]
+import flask
 import PyRSS2Gen  # type: ignore[import-untyped]
 import requests
 import validators
 import yaml
 from dotenv import dotenv_values
 from flask import Flask, abort, request, send_file, url_for
-import flask
 from waitress import serve
 
 from logger import setup_logger
@@ -52,7 +52,7 @@ def download(episode_name: str) -> flask.Response:
     processor = PodcastProcessor(config)
     output_path = processor.process(task)
     if output_path is None:
-        return "Failed to process episode", 500
+        return flask.make_response(("Failed to process episode", 500))
 
     try:
         return send_file(path_or_file=Path(output_path).resolve())

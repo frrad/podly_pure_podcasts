@@ -5,11 +5,11 @@ import os
 import pickle
 import threading
 from typing import Any, Dict, List, Tuple
-from openai.types.audio.transcription_segment import TranscriptionSegment
 
 import yaml
 from jinja2 import Template
 from openai import OpenAI
+from openai.types.audio.transcription_segment import TranscriptionSegment
 from pydub import AudioSegment  # type: ignore[import-untyped]
 
 from .env_settings import populate_env_settings

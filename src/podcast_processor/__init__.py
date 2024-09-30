@@ -1,6 +1,7 @@
+from warnings import filterwarnings
+
 from beartype.claw import beartype_this_package
 from beartype.roar import BeartypeDecorHintPep585DeprecationWarning
-from warnings import filterwarnings
 
 beartype_this_package()
 

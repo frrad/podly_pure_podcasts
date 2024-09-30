@@ -1,4 +1,5 @@
 import logging
+
 import pytest
 from openai import OpenAI
 from openai.types.audio.transcription_segment import TranscriptionSegment
