@@ -10,7 +10,6 @@ from openai.types.audio.transcription_segment import TranscriptionSegment
 from pydub import AudioSegment  # type: ignore[import-untyped]
 
 
-# Abstract Transcriber Class
 class Transcriber(ABC):
     @abstractmethod
     def transcribe(self, path: str) -> List[TranscriptionSegment]:
