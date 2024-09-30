@@ -23,16 +23,7 @@ def test_transcribe() -> None:
 
 
 def test_offset() -> None:
-
-    logger = logging.getLogger("global_logger")
-    env_settings = populate_env_settings()
-    client = OpenAI(
-        base_url=env_settings.openai_base_url,
-        api_key=env_settings.openai_api_key,
-    )
-    transcriber = RemoteWhisperTranscriber(logger, client)
-
-    assert transcriber.add_offset_to_segments(
+    assert RemoteWhisperTranscriber.add_offset_to_segments(
         [
             TranscriptionSegment(
                 id=1,
