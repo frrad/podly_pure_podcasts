@@ -1,7 +1,12 @@
+import logging
+import math
+import os
+import shutil
 from abc import ABC, abstractmethod
 from typing import Any, List
-import logging
-import os
+
+from openai import OpenAI
+from pydub import AudioSegment  # type: ignore[import-untyped]
 
 Segment = Any
 
@@ -10,24 +15,23 @@ Segment = Any
 class Transcriber(ABC):
     @abstractmethod
     def transcribe(self, path: str) -> List[Segment]:
-        raise NotImplementedError(
-            "The 'transcribe' method must be implemented by subclasses"
-        )
+        pass
 
 
 class RemoteWhisperTranscriber(Transcriber):
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: logging.Logger, openai_client: OpenAI):
         self.logger = logger
+        self.openai_client = openai_client
 
-    def remote_whisper(self, audio_path: str) -> List[Segment]:
+    def transcribe(self, audio_path: str) -> List[Segment]:
         self.logger.info("Using remote whisper")
         self.split_file(audio_path)
         all_segments = []
         for i in range(0, len(os.listdir(f"{audio_path}_parts")), 1):
-            segments = self.get_segments_for_chunk(f"{task.audio_path}_parts/{i}.mp3")
+            segments = self.get_segments_for_chunk(f"{audio_path}_parts/{i}.mp3")
             all_segments.extend(segments)
         # clean up
-        shutil.rmtree(f"{task.audio_path}_parts")
+        shutil.rmtree(f"{audio_path}_parts")
         return all_segments
 
     def split_file(
@@ -51,7 +55,7 @@ class RemoteWhisperTranscriber(Transcriber):
 
     def get_segments_for_chunk(self, chunk_path: str) -> List[Segment]:
         with open(chunk_path, "rb") as f:
-            model_extra = self.client.audio.transcriptions.create(
+            model_extra = self.openai_client.audio.transcriptions.create(
                 model="whisper-1",
                 file=f,
                 timestamp_granularities=["segment"],

@@ -1,10 +1,8 @@
 import gc
 import json
 import logging
-import math
 import os
 import pickle
-import shutil
 import threading
 from typing import Any, Dict, List, Tuple
 
@@ -14,11 +12,7 @@ from openai import OpenAI
 from pydub import AudioSegment  # type: ignore[import-untyped]
 
 from .env_settings import populate_env_settings
-from .transcribe import (
-    Segment,
-    Transcriber,
-    RemoteWhisperTranscriber,
-)
+from .transcribe import RemoteWhisperTranscriber, Segment, Transcriber
 
 env_settings = populate_env_settings()
 
@@ -42,6 +36,7 @@ class PodcastProcessorTask:
 class PodcastProcessor:
     lock_lock = threading.Lock()
     locks: Dict[str, threading.Lock] = {}
+    transcriber: Transcriber
 
     def __init__(
         self,
@@ -58,7 +53,7 @@ class PodcastProcessor:
             base_url=env_settings.openai_base_url,
             api_key=env_settings.openai_api_key,
         )
-        self.transcriber: Transcriber = RemoteWhisperTranscriber(self.logger)
+        self.transcriber = RemoteWhisperTranscriber(self.logger, self.client)
 
     def init_pickle_transcripts(self) -> Any:
         pickle_path = "transcripts.pickle"
@@ -157,7 +152,7 @@ class PodcastProcessor:
 
             return transcript
 
-        segments = self.remote_whisper(task)
+        segments = self.transcriber.transcribe(task.audio_path)
 
         for segment in segments:
             segment["start"] = round(segment["start"], 1)
@@ -362,7 +357,7 @@ class PodcastProcessor:
         return new_audio
 
 
-def main():
+def main() -> None:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("global_logger")
 
