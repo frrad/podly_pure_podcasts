@@ -40,6 +40,12 @@ DOWNLOAD_DIR = "in"
 def download(episode_name: str) -> flask.Response:
     episode_name = urllib.parse.unquote(episode_name)
     podcast_title, episode_url = get_args(request.url)
+
+    episode_url_allowlist = []
+    if episode_url not in episode_url_allowlist:
+        logging.error(f"episode '{episode_url}' not in allowlist.")
+        return flask.make_response(("no", 403))
+
     logging.info(f"Downloading episode {episode_name} from podcast {podcast_title}...")
     if episode_url is None or not validators.url(episode_url):
         return flask.make_response(("Invalid episode URL", 404))
