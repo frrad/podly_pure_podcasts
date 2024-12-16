@@ -135,15 +135,28 @@ class PodcastProcessor:
             segment.start = round(segment.start, 1)
             segment.end = round(segment.end, 1)
 
-        self.update_transcripts(post, segments)
+        self.update_transcripts_if_absent(post, segments)
         return segments
 
-    def update_transcripts(self, post: Post, result: List[Segment]) -> None:
-        post.transcript = Transcript(
-            post_id=post.id,
-            content=json.dumps([json.dumps(segment.dict()) for segment in result]),
-        )
-        db.session.commit()
+    def update_transcripts_if_absent(self, post: Post, result: List[Segment]) -> None:
+        try:
+            existing_transcript = Transcript.query.filter_by(post_id=post.id).first()
+
+            if existing_transcript is None:
+                # Write the new transcription result to the database
+                post.transcript = Transcript(
+                    post_id=post.id,
+                    content=json.dumps(
+                        [json.dumps(segment.dict()) for segment in result]
+                    ),
+                )
+                db.session.commit()
+            else:
+                print("Transcript already exists. Skipping update.")
+        except IntegrityError:
+            # Handle race conditions that might lead to unique constraint violations
+            db.session.rollback()
+            print("Another thread or process added a transcript. Skipping update.")
 
     def get_system_prompt(self, system_prompt_path: str) -> str:
         with open(system_prompt_path, "r") as f:
